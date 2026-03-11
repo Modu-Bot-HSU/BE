@@ -35,7 +35,7 @@ def run_initial_seeding():
                 VectorPoint(id=data.id, vector=all_vectors[idx], payload=data)
             )
 
-        vdb.upsert_batch(upload_points)
+        vdb.upsert_data(upload_points)
         print(f"✨ 초기 시딩 완료! (총 {len(data_list)}건)")
 
     except Exception as e:
