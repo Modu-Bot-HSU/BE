@@ -15,15 +15,13 @@ export class UsersService {
     private readonly userRepository: Repository<Users>,
   ) {}
 
-  async createUser(model: CreateUsersDto): Promise<Users> {
+  async createUser(model: Partial<Users>): Promise<Users> {
     const existingUser = await this.userRepository.exists({
-      where: {
-        walletAddress: model.walletAddress,
-      },
+      where: [{ walletAddress: model.walletAddress }, { email: model.email }],
     });
 
     if (existingUser) {
-      throw new BadRequestException('이미 가입된 주소 입니다');
+      throw new BadRequestException('이미 가입된 주소이거나 이메일입니다.');
     }
 
     const userObject = this.userRepository.create(model);
@@ -49,5 +47,27 @@ export class UsersService {
     }
 
     return user;
+  }
+
+  async getUserById(id: string): Promise<Users> {
+    const user = await this.userRepository.findOne({
+      where: { id },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`ID가 ${id}인 유저를 찾을 수 없습니다.`);
+    }
+
+    return user;
+  }
+
+  async getUserByWallet(walletAddress: string): Promise<Users | null> {
+    return this.userRepository.findOne({
+      where: { walletAddress },
+    });
+  }
+
+  async saveUser(user: Users): Promise<Users> {
+    return this.userRepository.save(user);
   }
 }
