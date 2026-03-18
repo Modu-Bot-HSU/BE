@@ -35,6 +35,67 @@ export class TokenService implements OnModuleInit {
   }
 
   /**
+   * 유저의 HS 토큰 잔액  // 관리자 잔액 조회
+   */
+  async getAdminBalance() {
+    const adminAddress = this.wallet.address;
+    const balance = await this.tokenContract.balanceOf(adminAddress);
+    return ethers.formatEther(balance);
+  }
+
+  // NFT 컨트랙트가 관리자의 토큰을 가져갈 수 있도록 승인 (테스트용)
+  async approveNftContract() {
+    const nftContractAddress =
+      this.configService.getOrThrow<string>('HS_NFT_ADDRESS');
+    try {
+      this.logger.log(`NFT 컨트랙트(${nftContractAddress}) 승인 시도...`);
+
+      // 100만개 넉넉하게 승인 (ethersv6 MaxUint256)
+      const tx = await this.tokenContract.approve(
+        nftContractAddress,
+        ethers.MaxUint256,
+      );
+
+      this.logger.log(`승인 트랜잭션 전송: ${tx.hash}`);
+      return await tx.wait();
+    } catch (error) {
+      this.logger.error('승인 실패:', error.message);
+      throw error;
+    }
+  }
+
+  // 테스트 유저 지갑으로 NFT 컨트랙트 승인 진행 (테스트용)
+  async approveByTestUser() {
+    const nftContractAddress =
+      this.configService.getOrThrow<string>('HS_NFT_ADDRESS');
+    const userPrivateKey =
+      this.configService.getOrThrow<string>('USER_PRIVATE_KEY');
+
+    try {
+      // 유저 지갑으로 새로운 컨트랙트 인스턴스 생성
+      const userWallet = new ethers.Wallet(userPrivateKey, this.provider);
+      const userTokenContract = new ethers.Contract(
+        this.tokenContract.target,
+        HsTokenAbi.abi,
+        userWallet,
+      );
+
+      this.logger.log(`테스트 유저 승인 시도 (${userWallet.address})...`);
+
+      const tx = await userTokenContract.approve(
+        nftContractAddress,
+        ethers.MaxUint256,
+      );
+
+      this.logger.log(`유저 승인 트랜잭션 전송: ${tx.hash}`);
+      return await tx.wait();
+    } catch (error) {
+      this.logger.error('유저 승인 실패:', error.message);
+      throw error;
+    }
+  }
+
+  /**
    * 유저의 HS 토큰 잔액 조회
    */
   async getBalance(address: string): Promise<string> {
