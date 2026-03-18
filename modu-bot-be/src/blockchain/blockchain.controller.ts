@@ -1,22 +1,26 @@
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { TokenService } from './token.service';
 import { AccessTokenGuard } from 'src/common/guards/access-token.guard';
 import { NftService } from './nft.service';
+import { GetCurrentUserId } from 'src/common/decorators/get-current-user-id.decorator';
+import { UsersService } from 'src/users/users.service';
 
 @Controller('blockchain')
 export class BlockchainController {
   constructor(
     private readonly tokenService: TokenService,
     private readonly nftService: NftService,
+    private readonly usersService: UsersService,
   ) {}
 
-  // 유저 토큰 조회
-  // @UseGuards(AccessTokenGuard)
-  @Get('balance/:address')
-  async getBalance(@Param('address') address: string) {
-    const balance = await this.tokenService.getBalance(address);
+  // 내 토큰 잔액 조회 (로그인된 정보 기반)
+  @UseGuards(AccessTokenGuard)
+  @Get('balance')
+  async getMyBalance(@GetCurrentUserId() userId: string) {
+    const user = await this.usersService.getUserById(userId);
+    const balance = await this.tokenService.getBalance(user.walletAddress);
     return {
-      address,
+      address: user.walletAddress,
       balance,
       symbol: 'HS',
     };
@@ -42,6 +46,7 @@ export class BlockchainController {
     };
   }
 
+  @UseGuards(AccessTokenGuard)
   @Get('nft/inventory')
   async getInventory() {
     return await this.nftService.getInventory();
@@ -65,6 +70,7 @@ export class BlockchainController {
     };
   }
 
+  @UseGuards(AccessTokenGuard)
   @Post('nft/purchase')
   async purchaseNft(@Body() body: { userAddress: string; index: number }) {
     const receipt = await this.nftService.purchaseNftForUser(
