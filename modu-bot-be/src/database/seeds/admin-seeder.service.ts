@@ -23,7 +23,9 @@ export class AdminSeederService implements OnModuleInit {
     const adminWallet = this.configService.get<string>('ADMIN_WALLET');
 
     if (!adminEmail || !adminWallet) {
-      console.warn('⚠️ 관리자 이메일이나 지갑 주소가 환경변수에 설정되지 않아 Seeder를 건너뜁니다.');
+      console.warn(
+        '관리자 이메일이나 지갑 주소가 환경변수에 설정되지 않아 Seeder를 건너뜁니다.',
+      );
       return;
     }
 
@@ -41,9 +43,9 @@ export class AdminSeederService implements OnModuleInit {
       });
 
       await this.userRepository.save(admin);
-      console.log('✅ 초기 관리자 계정이 생성되었습니다.');
+      console.log('초기 관리자 계정이 생성되었습니다.');
     } else {
-      console.log('ℹ️ 이미 관리자 계정이 존재합니다.');
+      console.log('이미 관리자 계정이 존재합니다.');
     }
   }
 }
