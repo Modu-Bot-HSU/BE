@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
+import { BlockchainModule } from './blockchain/blockchain.module';
 import typeorm from './config/typeorm';
 
 @Module({
@@ -23,6 +24,7 @@ import typeorm from './config/typeorm';
     UsersModule,
     AuthModule,
     MailModule,
+    BlockchainModule,
   ],
   controllers: [AppController],
   providers: [AppService],

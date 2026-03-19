@@ -4,12 +4,17 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
+import { NftProduct } from 'src/blockchain/entities/nft-product.entity';
 
 @Entity('users')
 export class Users {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @OneToMany(() => NftProduct, (nft) => nft.owner)
+  nfts: NftProduct[];
 
   @Column({
     type: 'varchar',
