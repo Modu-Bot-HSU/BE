@@ -6,6 +6,9 @@ import { GetCurrentUserId } from 'src/common/decorators/get-current-user-id.deco
 import { UsersService } from 'src/users/users.service';
 import { plainToInstance } from 'class-transformer';
 import { NftGoodsResponseDto } from './dto/response-nftGoods.dto';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { UsersRole } from 'src/users/enum/user-role.enum';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 
 @Controller('blockchain')
 export class BlockchainController {
@@ -29,6 +32,13 @@ export class BlockchainController {
   }
 
   // 보상 지급
+  /**
+   * 챗봇 기여에 대한 보상 지급 (Admin 권한 필요)
+   * @param to 보상 받을 유저 지갑 주소
+   * @param amount 지급할 토큰 양
+   */
+  @Roles(UsersRole.ADMIN)
+  @UseGuards(AccessTokenGuard, RolesGuard)
   @Post('reward')
   async rewardUser(@Body() body: { to: string; amount: string }) {
     const txHash = await this.tokenService.rewardUser(body.to, body.amount);

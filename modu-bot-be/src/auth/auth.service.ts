@@ -35,6 +35,7 @@ export class AuthService {
         {
           sub: user.id,
           username: user.name,
+          role: user.role,
         },
         {
           secret: this.configService.get('JWT_ACCESS_SECRET'),
@@ -45,6 +46,7 @@ export class AuthService {
         {
           sub: user.id,
           username: user.name,
+          role: user.role,
         },
         {
           secret: this.configService.get('JWT_REFRESH_SECRET'),
