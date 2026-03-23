@@ -4,18 +4,13 @@ from fastapi.responses import JSONResponse
 from app.constants.config import settings
 from app.api.v1.chat.rag_controller import router as chat_router
 from app.schemas.common import ResponseType, ErrorType
-from app.db.vectorDB import VectorDB
-from app.core.dependencies import get_rag_service
 
 app = FastAPI(title=settings.PROJECT_NAME)
-db = VectorDB()
 app.include_router(chat_router, prefix="/api/v1/chat", tags=["Chat"])
 
 
 @app.get("/")
 def read_root():
-    RAGService = get_rag_service()
-    RAGService.get_embedding("asdsad")
     return {"message": "한성대 챗봇 AI 서버가 작동중입니다"}
 
 
