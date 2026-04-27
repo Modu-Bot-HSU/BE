@@ -1,17 +1,17 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
 
 
 # LLM이 내뱉을 결과 구조 정의
-class RefinedInfo(BaseModel):
+class RefinedKnowledge(BaseModel):
     title: str
     content: str
     category: str
     source: str
 
 
-class InfoDataType(BaseModel):
+class KnowledgeDataType(BaseModel):
     category: str
     title: str
     content: str

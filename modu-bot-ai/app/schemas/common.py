@@ -11,5 +11,6 @@ class ErrorType(BaseModel):
 
 class ResponseType(BaseModel, Generic[T]):
     success: bool
+    message: Optional[str] = None
     data: Optional[T] = None
     error: Optional[ErrorType] = None

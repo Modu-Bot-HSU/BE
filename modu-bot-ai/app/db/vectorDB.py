@@ -1,7 +1,7 @@
 from app.constants.config import settings
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
-from app.schemas.info_data import InfoDataType
+from app.schemas.knowledge_data import KnowledgeDataType
 from app.schemas.vector import VectorPoint
 
 
@@ -52,30 +52,51 @@ class VectorDB:
             with_payload=True,
         ).points
 
+    def delete_point(self, point_id: str):
+        self.client.delete(
+            collection_name=self.collection_name,
+            points_selector=models.PointIdsList(points=[point_id]),
+        )
+
     # 무한 스크롤을 위한 카테고리별 데이터 조회
-    def get_category_infos_scroll(
-        self, category_name: str, limit: int = 50, offset: str | int | None = None
+    def get_knowledges_scroll(
+        self, category: str, limit: int = 50, offset: str | int | None = None
     ):
+        # 1. 필터 정의 (재사용을 위해 변수화)
+        search_filter = models.Filter(
+            must=[
+                models.FieldCondition(
+                    key="category",
+                    match=models.MatchValue(value=category),
+                )
+            ]
+        )
+
+        # 2. 전체 개수 조회 (count API 사용)
+        count_result = self.client.count(
+            collection_name=self.collection_name,
+            count_filter=search_filter,
+            exact=True,  # 정확한 개수를 위해 True 설정
+        )
+
+        # 3. 데이터 스크롤 조회
         records, next_offset = self.client.scroll(
             collection_name=self.collection_name,
-            scroll_filter=models.Filter(
-                must=[
-                    models.FieldCondition(
-                        key="category",
-                        match=models.MatchValue(value=category_name),
-                    )
-                ]
-            ),
+            scroll_filter=search_filter,
             limit=limit,
             offset=offset,
             with_payload=True,
             with_vectors=False,
         )
 
-        infos = []
+        knowledges = []
         for record in records:
             item = dict(record.payload)
             item["id"] = record.id
-            infos.append(item)
+            knowledges.append(item)
 
-        return {"infos": infos, "next_offset": next_offset}
+        return {
+            "total_count": count_result.count,  # 전체 개수 추가
+            "knowledges": knowledges,
+            "next_offset": next_offset,
+        }

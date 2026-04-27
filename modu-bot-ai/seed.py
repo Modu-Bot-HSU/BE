@@ -2,7 +2,7 @@ import json
 import os
 import uuid
 from app.core.dependencies import get_vector_db, get_rag_service
-from app.schemas.info_data import InfoDataType
+from app.schemas.knowledge_data import KnowledgeDataType
 from app.schemas.vector import VectorPoint
 
 
@@ -20,7 +20,7 @@ def run_initial_seeding():
 
     with open(file_path, "r", encoding="utf-8") as f:
         raw_dicts = json.load(f)
-        data_list = [InfoDataType(**item) for item in raw_dicts]
+        data_list = [KnowledgeDataType(**item) for item in raw_dicts]
 
     print(f"🚀 총 {len(data_list)}개의 초기 데이터를 시딩합니다...")
 
