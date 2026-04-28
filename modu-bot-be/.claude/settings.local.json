@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm add *)",
+      "Bash(DB_HOST=localhost pnpm migration:generate *)",
+      "Bash(pnpm build *)"
+    ]
+  }
+}

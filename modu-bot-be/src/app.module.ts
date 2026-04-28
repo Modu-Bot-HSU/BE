@@ -8,6 +8,8 @@ import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
 import { BlockchainModule } from './blockchain/blockchain.module';
 import { SeederModule } from './database/seeds/seeder.module';
+import { KnowledgeModule } from './knowledge/knowledge.module';
+import { AdminModule } from './admin/admin.module';
 import typeorm from './config/typeorm';
 
 @Module({
@@ -28,6 +30,8 @@ import typeorm from './config/typeorm';
     MailModule,
     BlockchainModule,
     SeederModule,
+    KnowledgeModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],
