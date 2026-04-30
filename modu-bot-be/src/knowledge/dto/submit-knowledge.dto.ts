@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsString, IsUUID } from 'class-validator';
 
 export enum KnowledgeCategory {
   ACADEMIC = 'academic',
@@ -13,13 +13,12 @@ export enum KnowledgeCategory {
 
 export class SubmitKnowledgeDto {
   @IsEnum(KnowledgeCategory)
-  category: KnowledgeCategory;
+  category!: KnowledgeCategory;
 
   @IsString()
   @IsNotEmpty()
-  content: string;
+  content!: string;
 
-  @IsString()
-  @IsOptional()
-  originalQuestion?: string;
+  @IsUUID()
+  questionId!: string;
 }

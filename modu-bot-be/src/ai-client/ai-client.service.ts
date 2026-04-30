@@ -37,12 +37,13 @@ export class AiClientService {
   }
 
   async getKnowledge(
-    category: string,
+    category?: string,
     limit?: number,
     offset?: string,
   ): Promise<AiKnowledgeListResponse> {
     try {
-      const params: Record<string, string | number> = { category };
+      const params: Record<string, string | number> = {};
+      if (category) params.category = category;
       if (limit) params.limit = limit;
       if (offset) params.offset = offset;
 

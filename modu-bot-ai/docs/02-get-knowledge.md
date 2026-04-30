@@ -1,8 +1,9 @@
 # GET /api/v1/knowledge
 
-## 카테고리별 지식 베이스 조회
+## 지식 베이스 조회
 
-특정 카테고리에 속하는 지식 베이스 항목 목록을 커서 기반 페이지네이션으로 조회합니다.
+지식 베이스 항목 목록을 커서 기반 페이지네이션으로 조회합니다.  
+`category`를 생략하면 전체 조회, 지정하면 카테고리 필터 조회입니다.
 
 ---
 
@@ -13,11 +14,11 @@
 
 ### Query Parameters
 
-| 파라미터 | 타입    | 필수 | 설명                                    |
-| -------- | ------- | ---- | --------------------------------------- |
-| category | String  | O    | 조회할 카테고리 키                      |
-| limit    | Integer | X    | 한 번에 조회할 최대 개수 (기본값: 50)   |
-| offset   | String  | X    | 마지막으로 읽은 데이터의 ID (커서). 첫 요청 시 생략 |
+| 파라미터 | 타입    | 필수 | 설명                                                        |
+| -------- | ------- | ---- | ----------------------------------------------------------- |
+| category | String  | X    | 조회할 카테고리 키. 생략 시 전체 조회                       |
+| limit    | Integer | X    | 한 번에 조회할 최대 개수 (기본값: 50)                       |
+| offset   | String  | X    | 마지막으로 읽은 데이터의 ID (커서). 첫 요청 시 생략         |
 
 ### 카테고리 목록
 
@@ -35,8 +36,10 @@
 ### Request 예시
 
 ```
-GET /api/v1/knowledge?category=scholarship&limit=10
-GET /api/v1/knowledge?category=scholarship&limit=10&offset=550e8400-e29b-41d4-a716-446655440000
+GET /api/v1/knowledge                                                      # 전체 조회
+GET /api/v1/knowledge?category=scholarship                                 # 카테고리 필터
+GET /api/v1/knowledge?category=scholarship&limit=10                        # 페이지 크기 지정
+GET /api/v1/knowledge?category=scholarship&limit=10&offset=550e8400-...    # 다음 페이지
 ```
 
 ---
@@ -77,7 +80,7 @@ GET /api/v1/knowledge?category=scholarship&limit=10&offset=550e8400-e29b-41d4-a7
 
 | 필드                          | 타입              | 설명                                               |
 | ----------------------------- | ----------------- | -------------------------------------------------- |
-| data.total_count              | Integer           | 해당 카테고리의 전체 항목 수                       |
+| data.total_count              | Integer           | 조회 대상 전체 항목 수 (카테고리 필터 또는 전체)   |
 | data.knowledges               | Array             | 조회된 지식 항목 목록                              |
 | data.knowledges[].id          | String (UUID)     | Qdrant 포인트 ID                                   |
 | data.knowledges[].category    | String            | 카테고리 키                                        |
@@ -95,17 +98,17 @@ GET /api/v1/knowledge?category=scholarship&limit=10&offset=550e8400-e29b-41d4-a7
 
 ## Error
 
-| 에러 코드             | HTTP Status | 조건                   |
-| --------------------- | ----------- | ---------------------- |
-| UNPROCESSABLE_ENTITY  | 422         | category 파라미터 누락 |
-| INTERNAL_SERVER_ERROR | 500         | 벡터 DB 조회 오류      |
+| 에러 코드             | HTTP Status | 조건              |
+| --------------------- | ----------- | ----------------- |
+| INTERNAL_SERVER_ERROR | 500         | 벡터 DB 조회 오류 |
 
 ---
 
 ## 비즈니스 규칙
 
-1. Qdrant scroll API를 사용하여 category 필드 기준 필터링
-2. 벡터값은 반환하지 않고 payload만 반환
-3. limit 기본값은 50
-4. `next_offset`이 null이면 더 이상 데이터 없음 (마지막 페이지)
-5. 다음 페이지 조회 시 `next_offset` 값을 `offset` 파라미터로 전달
+1. `category` 파라미터가 있으면 해당 카테고리 필터링, 없으면 전체 조회
+2. Qdrant scroll API를 사용하여 커서 기반 페이지네이션 처리
+3. 벡터값은 반환하지 않고 payload만 반환
+4. `limit` 기본값은 50
+5. `next_offset`이 null이면 더 이상 데이터 없음 (마지막 페이지)
+6. 다음 페이지 조회 시 `next_offset` 값을 `offset` 파라미터로 전달

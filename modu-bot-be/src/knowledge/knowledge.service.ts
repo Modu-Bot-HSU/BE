@@ -1,15 +1,19 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { uuidv7 } from 'uuidv7';
 import { PendingKnowledge } from './entities/pending-knowledge.entity';
 import { PendingKnowledgeType } from './enum/pending-knowledge-type.enum';
 import { PendingKnowledgeStatus } from './enum/pending-knowledge-status.enum';
-import { AiClientService, AiKnowledgeListResponse } from 'src/ai-client/ai-client.service';
+import {
+  AiClientService,
+  AiKnowledgeListResponse,
+} from 'src/ai-client/ai-client.service';
 import { Users } from 'src/users/entities/users.entity';
 import { SubmitKnowledgeDto } from './dto/submit-knowledge.dto';
 import { RequestUpdateKnowledgeDto } from './dto/request-update-knowledge.dto';
 import { RequestDeleteKnowledgeDto } from './dto/request-delete-knowledge.dto';
+import { QuestionService } from 'src/question/question.service';
 
 @Injectable()
 export class KnowledgeService {
@@ -17,17 +21,23 @@ export class KnowledgeService {
     @InjectRepository(PendingKnowledge)
     private readonly pendingRepo: Repository<PendingKnowledge>,
     private readonly aiClientService: AiClientService,
+    private readonly questionService: QuestionService,
   ) {}
 
   async getKnowledge(
-    category: string,
+    category?: string,
     limit?: number,
     offset?: string,
   ): Promise<AiKnowledgeListResponse> {
     return this.aiClientService.getKnowledge(category, limit, offset);
   }
 
-  async submitKnowledge(user: Users, dto: SubmitKnowledgeDto): Promise<PendingKnowledge> {
+  async submitKnowledge(
+    user: Users,
+    dto: SubmitKnowledgeDto,
+  ): Promise<PendingKnowledge> {
+    const question = await this.questionService.findById(dto.questionId);
+
     const pending = this.pendingRepo.create({
       id: uuidv7(),
       type: PendingKnowledgeType.CREATE,
@@ -37,8 +47,10 @@ export class KnowledgeService {
       submittedByWallet: user.walletAddress,
       category: dto.category,
       content: dto.content,
-      originalQuestion: dto.originalQuestion ?? null,
+      questionId: question.id,
+      originalQuestion: question.text,
     });
+
     return this.pendingRepo.save(pending);
   }
 
@@ -47,6 +59,8 @@ export class KnowledgeService {
     knowledgeId: string,
     dto: RequestUpdateKnowledgeDto,
   ): Promise<PendingKnowledge> {
+    const question = await this.questionService.findById(dto.questionId);
+
     const pending = this.pendingRepo.create({
       id: uuidv7(),
       type: PendingKnowledgeType.UPDATE,
@@ -56,7 +70,8 @@ export class KnowledgeService {
       submittedByWallet: user.walletAddress,
       category: dto.category,
       content: dto.content,
-      originalQuestion: dto.originalQuestion ?? null,
+      questionId: question.id,
+      originalQuestion: question.text,
     });
     return this.pendingRepo.save(pending);
   }

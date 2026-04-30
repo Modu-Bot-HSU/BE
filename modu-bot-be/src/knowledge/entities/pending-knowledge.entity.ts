@@ -45,6 +45,9 @@ export class PendingKnowledge {
   @Column({ type: 'text' })
   content: string;
 
+  @Column({ type: 'varchar', length: 36, nullable: true })
+  questionId: string | null;
+
   @Column({ type: 'text', nullable: true })
   originalQuestion: string | null;
 

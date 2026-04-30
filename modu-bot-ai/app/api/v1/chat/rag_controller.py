@@ -38,7 +38,7 @@ async def ask_question(
 
 @router.get("/knowledge", response_model=ResponseType)
 async def get_knowledge_by_category(
-    category: str = Query(..., description="조회할 카테고리"),
+    category: Optional[str] = Query(None, description="조회할 카테고리 (미입력 시 전체 조회)"),
     limit: int = Query(50, description="한 페이지당 가져올 개수"),
     offset: Optional[str] = Query(
         None, description="마지막으로 읽은 데이터의 ID(커서)"

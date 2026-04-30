@@ -1,15 +1,14 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsString, IsUUID } from 'class-validator';
 import { KnowledgeCategory } from './submit-knowledge.dto';
 
 export class RequestUpdateKnowledgeDto {
   @IsEnum(KnowledgeCategory)
-  category: KnowledgeCategory;
+  category!: KnowledgeCategory;
 
   @IsString()
   @IsNotEmpty()
-  content: string;
+  content!: string;
 
-  @IsString()
-  @IsOptional()
-  originalQuestion?: string;
+  @IsUUID()
+  questionId!: string;
 }

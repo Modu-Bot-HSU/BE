@@ -127,7 +127,7 @@ class RAGService:
         return payload
 
     async def get_knowledge_by_category_logic(
-        self, category: str, limit: int = 50, offset: str | int | None = None
+        self, category: str | None = None, limit: int = 50, offset: str | int | None = None
     ) -> list:
         result = self.vector_db.get_knowledges_scroll(
             category=category, limit=limit, offset=offset

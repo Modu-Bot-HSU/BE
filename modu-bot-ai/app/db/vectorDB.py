@@ -58,18 +58,22 @@ class VectorDB:
             points_selector=models.PointIdsList(points=[point_id]),
         )
 
-    # 무한 스크롤을 위한 카테고리별 데이터 조회
+    # 무한 스크롤을 위한 카테고리별/전체 데이터 조회
     def get_knowledges_scroll(
-        self, category: str, limit: int = 50, offset: str | int | None = None
+        self, category: str | None = None, limit: int = 50, offset: str | int | None = None
     ):
-        # 1. 필터 정의 (재사용을 위해 변수화)
-        search_filter = models.Filter(
-            must=[
-                models.FieldCondition(
-                    key="category",
-                    match=models.MatchValue(value=category),
-                )
-            ]
+        # 1. 필터 정의 (category 없으면 전체 조회)
+        search_filter = (
+            models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key="category",
+                        match=models.MatchValue(value=category),
+                    )
+                ]
+            )
+            if category
+            else None
         )
 
         # 2. 전체 개수 조회 (count API 사용)
