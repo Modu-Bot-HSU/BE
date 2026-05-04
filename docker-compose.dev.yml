@@ -6,7 +6,7 @@ services:
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
     ports:
-      - '5432:5432'
+      - "5432:5432"
     env_file:
       - .env.local
   qdrant:
@@ -14,31 +14,31 @@ services:
     container_name: modu-bot-qdrant
     restart: always
     ports:
-      - '8001:6333'
-      - '6334:6334'
+      - "8001:6333"
+      - "6334:6334"
     volumes:
       - ./qdrant_storage:/qdrant/storage:z
 
-  backend:
-    build:
-      context: ./modu-bot-be
-      dockerfile: Dockerfile
-    container_name: modu-bot-backend
-    restart: always
-    ports:
-      - '3000:3000'
-    env_file:
-      - .env.local
-    depends_on:
-      - postgres
+  # backend:
+  #   build:
+  #     context: ./modu-bot-be
+  #     dockerfile: Dockerfile
+  #   container_name: modu-bot-backend
+  #   restart: always
+  #   ports:
+  #     - '3000:3000'
+  #   env_file:
+  #     - .env.local
+  #   depends_on:
+  #     - postgres
 
-  ai:
-    build:
-      context: ./modu-bot-ai
-      dockerfile: dockerfile
-    container_name: modu-bot-ai
-    restart: always
-    ports:
-      - '8000:8000'
-    env_file:
-      - .env.local
+  # ai:
+  #   build:
+  #     context: ./modu-bot-ai
+  #     dockerfile: dockerfile
+  #   container_name: modu-bot-ai
+  #   restart: always
+  #   ports:
+  #     - '8000:8000'
+  #   env_file:
+  #     - .env.local

@@ -6,7 +6,7 @@ from app.api.v1.chat.rag_controller import router as chat_router
 from app.schemas.common import ResponseType, ErrorType
 
 app = FastAPI(title=settings.PROJECT_NAME)
-app.include_router(chat_router, prefix="/api/v1/chat", tags=["Chat"])
+app.include_router(chat_router, prefix="/api/v1", tags=["Chat"])
 
 
 @app.get("/")

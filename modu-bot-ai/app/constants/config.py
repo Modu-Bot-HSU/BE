@@ -16,6 +16,7 @@ class Settings:
     # AI 모델 설정
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY")
     GEMINI_ANSWER_MODEL: str = os.getenv("GEMINI_ANSWER_MODEL", "gemini-2.5-flash")
+    GEMINI_REFINE_MODEL: str = os.getenv("GEMINI_REFINE_MODEL", "gemini-2.5-flash-lite")
     GEMINI_EMBEDDING_MODEL: str = os.getenv(
         "GEMINI_EMBEDDING_MODEL", "gemini-embedding-001"
     )
