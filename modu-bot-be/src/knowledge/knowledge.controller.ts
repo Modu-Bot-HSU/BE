@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -15,6 +16,7 @@ import { UsersService } from 'src/users/users.service';
 import { SubmitKnowledgeDto } from './dto/submit-knowledge.dto';
 import { RequestUpdateKnowledgeDto } from './dto/request-update-knowledge.dto';
 import { RequestDeleteKnowledgeDto } from './dto/request-delete-knowledge.dto';
+import { PendingKnowledgeStatus } from './enum/pending-knowledge-status.enum';
 
 @Controller('knowledge')
 export class KnowledgeController {
@@ -30,6 +32,23 @@ export class KnowledgeController {
     @Query('offset') offset?: string,
   ) {
     return this.knowledgeService.getKnowledge(category, limit, offset);
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Get('my-submissions')
+  async getMySubmissions(
+    @GetCurrentUserId() userId: string,
+    @Query('status') status?: string,
+  ) {
+    if (status && !Object.values(PendingKnowledgeStatus).includes(status as PendingKnowledgeStatus)) {
+      throw new BadRequestException(
+        `status는 ${Object.values(PendingKnowledgeStatus).join(', ')} 중 하나여야 합니다.`,
+      );
+    }
+    return this.knowledgeService.getMySubmissions(
+      userId,
+      status as PendingKnowledgeStatus | undefined,
+    );
   }
 
   @UseGuards(AccessTokenGuard)
