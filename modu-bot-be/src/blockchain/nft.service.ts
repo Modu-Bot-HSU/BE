@@ -114,6 +114,13 @@ export class NftService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  // 유저가 보유한 NFT 목록 조회
+  async getUserOwnedNfts(userId: string): Promise<NftProduct[]> {
+    return this.nftRepository.find({
+      where: { owner: { id: userId } },
+    });
+  }
+
   // 유저를 대신해 NFT 구매 (서버 가스비 대납 로직)
   async purchaseNftForUser(
     userAddress: string,
