@@ -78,7 +78,7 @@ export class NftService implements OnModuleInit, OnModuleDestroy {
 
       // DB 동기화 로직
       const inventory: NftProduct[] = [];
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 11; i++) {
         let product = await this.nftRepository.findOne({
           where: { index: i },
           relations: ['owner'],
@@ -87,6 +87,9 @@ export class NftService implements OnModuleInit, OnModuleDestroy {
         const isSoldOnChain = onChainStatus[i];
         const fileName = (i + 1).toString().padStart(2, '0');
 
+        const newImageUrl = `${gateway}/${imageCid}/${fileName}.png`;
+        const newMetadataUrl = `${gateway}/${metadataCid}/${i}`;
+
         if (!product) {
           // DB에 없으면 초기 데이터 생성
           product = this.nftRepository.create({
@@ -94,15 +97,29 @@ export class NftService implements OnModuleInit, OnModuleDestroy {
             name: `HanSung NFT #${i}`,
             description: '한성대학교 3D NFT 프로젝트',
             price: this.NFT_PRICE,
-            imageUrl: `${gateway}/${imageCid}/${fileName}.png`,
-            metadataUrl: `${gateway}/${metadataCid}/${i}`,
+            imageUrl: newImageUrl,
+            metadataUrl: newMetadataUrl,
             isSold: isSoldOnChain,
           });
           product = await this.nftRepository.save(product);
-        } else if (product.isSold !== isSoldOnChain) {
-          // 블록체인 상태와 DB가 다르면 업데이트
-          product.isSold = isSoldOnChain;
-          await this.nftRepository.save(product);
+        } else {
+          // 블록체인 상태 또는 IPFS URL이 변경된 경우 업데이트
+          let needsSave = false;
+          if (product.isSold !== isSoldOnChain) {
+            product.isSold = isSoldOnChain;
+            needsSave = true;
+          }
+          if (product.imageUrl !== newImageUrl) {
+            product.imageUrl = newImageUrl;
+            needsSave = true;
+          }
+          if (product.metadataUrl !== newMetadataUrl) {
+            product.metadataUrl = newMetadataUrl;
+            needsSave = true;
+          }
+          if (needsSave) {
+            await this.nftRepository.save(product);
+          }
         }
         inventory.push(product);
       }
