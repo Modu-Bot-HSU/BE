@@ -91,11 +91,12 @@ export class NftService implements OnModuleInit, OnModuleDestroy {
         const newMetadataUrl = `${gateway}/${metadataCid}/${i}`;
 
         if (!product) {
-          // DB에 없으면 초기 데이터 생성
+          // DB에 없으면 IPFS 메타데이터 fetch 후 초기 데이터 생성
+          const ipfsMeta = await this.fetchIpfsMetadata(newMetadataUrl);
           product = this.nftRepository.create({
             index: i,
-            name: `HanSung NFT #${i}`,
-            description: '한성대학교 3D NFT 프로젝트',
+            name: ipfsMeta?.name ?? `HanSung NFT #${i}`,
+            description: ipfsMeta?.description ?? '한성대학교 3D NFT 프로젝트',
             price: this.NFT_PRICE,
             imageUrl: newImageUrl,
             metadataUrl: newMetadataUrl,
@@ -114,7 +115,11 @@ export class NftService implements OnModuleInit, OnModuleDestroy {
             needsSave = true;
           }
           if (product.metadataUrl !== newMetadataUrl) {
+            // metadataUrl이 바뀌면 name/description도 재동기화
+            const ipfsMeta = await this.fetchIpfsMetadata(newMetadataUrl);
             product.metadataUrl = newMetadataUrl;
+            product.name = ipfsMeta?.name ?? product.name;
+            product.description = ipfsMeta?.description ?? product.description;
             needsSave = true;
           }
           if (needsSave) {
@@ -222,6 +227,27 @@ export class NftService implements OnModuleInit, OnModuleDestroy {
         }
       },
     );
+  }
+
+  // IPFS 메타데이터 JSON fetch 헬퍼
+  private async fetchIpfsMetadata(
+    url: string,
+  ): Promise<{ name: string; description: string } | null> {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        this.logger.warn(`IPFS 메타데이터 fetch 실패: ${url} (${res.status})`);
+        return null;
+      }
+      const json = await res.json();
+      return {
+        name: json.name ?? null,
+        description: json.description ?? null,
+      };
+    } catch (error) {
+      this.logger.warn(`IPFS 메타데이터 fetch 오류: ${error.message}`);
+      return null;
+    }
   }
 
   private reconnect() {
