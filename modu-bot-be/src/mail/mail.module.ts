@@ -5,10 +5,7 @@ import { MailService } from './mail.service';
 import { MailController } from './mail.controller';
 import { UsersModule } from 'src/users/users.module';
 import { join } from 'path';
-
-const {
-  HandlebarsAdapter,
-} = require('@nestjs-modules/mailer/dist/adapters/handlebars.adapter');
+import { HandlebarsAdapter } from '@nestjs-modules/mailer/adapters/handlebars.adapter';
 
 @Module({
   imports: [
