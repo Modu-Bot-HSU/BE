@@ -19,7 +19,7 @@ export class UsersController {
    * 마이페이지 정보 조회
    * GET /users/mypage
    */
-  // @UseGuards(AccessTokenGuard)
+  @UseGuards(AccessTokenGuard)
   @Get('mypage')
   async getMyPage(
     @GetCurrentUserId() userId: string,
