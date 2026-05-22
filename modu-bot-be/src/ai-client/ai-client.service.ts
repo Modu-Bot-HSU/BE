@@ -63,6 +63,7 @@ export class AiClientService {
     category: string;
     content: string;
     original_question?: string;
+    refine?: boolean;
   }): Promise<{ id: string }> {
     try {
       const response = await firstValueFrom(
@@ -95,6 +96,18 @@ export class AiClientService {
     } catch (error) {
       this.logger.error('AI 서버 지식 수정 실패:', error.message);
       throw new InternalServerErrorException('AI 서버 지식 수정에 실패했습니다.');
+    }
+  }
+
+  async ask(question: string): Promise<{ answer: string; sources: any[] }> {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(`${this.baseUrl}/api/v1/ask`, { question }),
+      );
+      return response.data.data;
+    } catch (error) {
+      this.logger.error('AI 서버 질문 처리 실패:', error.message);
+      throw new InternalServerErrorException('AI 서버와의 통신에 실패했습니다.');
     }
   }
 

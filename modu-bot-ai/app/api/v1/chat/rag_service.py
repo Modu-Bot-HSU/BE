@@ -1,4 +1,6 @@
 from google import genai
+from google.genai.errors import ClientError
+from fastapi import HTTPException
 from app.constants.config import settings
 from app.constants.prompt import RAG_ANSWER_PROMPT_TEMPLATE
 from app.schemas.knowledge_data import RefinedKnowledge
@@ -86,12 +88,29 @@ class RAGService:
         category: str,
         content: str,
         original_question: str = None,
+        refine: bool = True,
     ) -> dict:
-        refined_data = await self.refine_raw_text(
-            category=category,
-            content=content,
-            original_question=original_question,
-        )
+        if refine:
+            try:
+                refined_data = await self.refine_raw_text(
+                    category=category,
+                    content=content,
+                    original_question=original_question,
+                )
+            except ClientError as e:
+                if e.status_code == 429:
+                    raise HTTPException(
+                        status_code=429,
+                        detail="Gemini API 할당량 초과. 잠시 후 다시 시도해주세요.",
+                    )
+                raise
+        else:
+            refined_data = {
+                "category": category,
+                "title": original_question or f"[{category}] 정보",
+                "content": content,
+                "source": "",
+            }
         now = datetime.now().isoformat()
         existing_points = self.vector_db.client.retrieve(
             collection_name=self.vector_db.collection_name, ids=[knowledge_id]

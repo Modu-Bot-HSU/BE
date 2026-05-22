@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pnpm migration:run)"
+      "Bash(pnpm migration:run)",
+      "Bash(pnpm build *)"
     ]
   }
 }

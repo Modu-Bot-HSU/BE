@@ -19,6 +19,7 @@ class KnowledgeInsertRequest(BaseModel):
     content: str
     source: Optional[str] = Field(None, description="정보의 출처 (선택 사항)")
     original_question: Optional[str] = None
+    refine: bool = Field(True, description="LLM 정제 여부 (시드 데이터는 False)")
 
 
 class KnowledgeUpdateRequest(BaseModel):
@@ -62,6 +63,7 @@ async def insert_knowledge(
         category=request.category,
         content=request.content,
         original_question=request.original_question,
+        refine=request.refine,
     )
     return ResponseType(
         success=True,
