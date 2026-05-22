@@ -19,10 +19,15 @@ services:
     container_name: modu-bot-qdrant
     restart: always
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:6333/healthz || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "bash -c ':>/dev/tcp/localhost/6333' 2>/dev/null || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     ports:
       - "8001:6333"
       - "6334:6334"
@@ -58,11 +63,11 @@ services:
       test:
         [
           "CMD",
-          "python",
+          "python3",
           "-c",
-          "import urllib.request; urllib.request.urlopen('http://localhost:8000/')",
+          "import urllib.request; urllib.request.urlopen('http://ai:8000/')",
         ]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 30s
+      retries: 10
+      start_period: 60s
