@@ -11,6 +11,7 @@ import { SeederModule } from './database/seeds/seeder.module';
 import { KnowledgeModule } from './knowledge/knowledge.module';
 import { AdminModule } from './admin/admin.module';
 import { QuestionModule } from './question/question.module';
+import { ChatModule } from './chat/chat.module';
 import typeorm from './config/typeorm';
 
 @Module({
@@ -34,6 +35,7 @@ import typeorm from './config/typeorm';
     KnowledgeModule,
     AdminModule,
     QuestionModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],
