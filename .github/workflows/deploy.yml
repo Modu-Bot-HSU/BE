@@ -2,7 +2,7 @@ name: CI/CD Deployment
 
 on:
   push:
-    branches: ['main']
+    branches: ["main"]
 
 jobs:
   build-and-push:
@@ -28,7 +28,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./modu-bot-ai
-          file: ./modu-bot-ai/dockerfile
+          file: ./modu-bot-ai/dockerfile.prod
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/modu-bot-ai:latest
 
