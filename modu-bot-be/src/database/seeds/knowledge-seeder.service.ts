@@ -27,7 +27,26 @@ export class KnowledgeSeederService implements OnModuleInit {
     await this.seedKnowledge();
   }
 
+  private async waitForAiServer(retries = 5, delayMs = 5000): Promise<boolean> {
+    for (let i = 1; i <= retries; i++) {
+      try {
+        await this.aiClientService.getKnowledge(undefined, 1);
+        return true;
+      } catch {
+        this.logger.warn(`AI 서버 연결 대기 중... (${i}/${retries})`);
+        if (i < retries) await new Promise((r) => setTimeout(r, delayMs));
+      }
+    }
+    return false;
+  }
+
   private async seedKnowledge() {
+    const ready = await this.waitForAiServer();
+    if (!ready) {
+      this.logger.warn('AI 서버 연결 실패 — RAG 지식 시드를 건너뜁니다.');
+      return;
+    }
+
     try {
       const existing = await this.aiClientService.getKnowledge(undefined, 1);
       if (existing.total_count > 0) {
@@ -37,9 +56,7 @@ export class KnowledgeSeederService implements OnModuleInit {
         return;
       }
     } catch {
-      this.logger.warn(
-        'AI 서버 연결 실패 — RAG 지식 시드를 건너뜁니다. 서버가 준비된 후 재시작하세요.',
-      );
+      this.logger.warn('AI 서버 응답 오류 — RAG 지식 시드를 건너뜁니다.');
       return;
     }
 
@@ -58,10 +75,14 @@ export class KnowledgeSeederService implements OnModuleInit {
         });
         inserted++;
       } catch (err) {
-        this.logger.error(`지식 시드 삽입 실패 [${item.category}]: ${err.message}`);
+        this.logger.error(
+          `지식 시드 삽입 실패 [${item.category}]: ${err.message}`,
+        );
       }
     }
 
-    this.logger.log(`RAG 지식 시드 완료: ${inserted}/${seedData.length}개 삽입`);
+    this.logger.log(
+      `RAG 지식 시드 완료: ${inserted}/${seedData.length}개 삽입`,
+    );
   }
 }
