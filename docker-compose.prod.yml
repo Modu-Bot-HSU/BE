@@ -51,7 +51,9 @@ services:
         condition: service_healthy
 
   ai:
-    image: woojo230/modu-bot-ai:latest
+    build:
+      context: ./modu-bot-ai
+      dockerfile: dockerfile.prod
     depends_on:
       qdrant:
         condition: service_healthy
@@ -65,7 +67,7 @@ services:
           "CMD",
           "python3",
           "-c",
-          "import urllib.request; urllib.request.urlopen('http://ai:8000/')",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/')",
         ]
       interval: 10s
       timeout: 5s
