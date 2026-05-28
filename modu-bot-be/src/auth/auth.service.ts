@@ -4,9 +4,11 @@ import {
   BadRequestException,
   NotFoundException,
   UnauthorizedException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { MailerService } from '@nestjs-modules/mailer';
 import { UsersService } from 'src/users/users.service';
 import * as argon2 from 'argon2';
 import { Users } from 'src/users/entities/users.entity';
@@ -14,13 +16,38 @@ import { SignUpUserDto } from './dto/sign-up.dto';
 import { SignInUserDto } from './dto/sign-in.dto';
 import { ethers } from 'ethers';
 
+/** 회원가입 임시 저장소 항목 */
+interface PendingSignUpEntry {
+  data: SignUpUserDto;
+  code: string;
+  expiresAt: Date;
+}
+
 @Injectable()
-export class AuthService {
+export class AuthService implements OnModuleInit {
+  /** 이메일 인증 전 임시 회원가입 데이터 저장소 (추후 Redis로 교체 예정) */
+  private pendingSignUpStore = new Map<string, PendingSignUpEntry>();
+
+  private gcInterval: NodeJS.Timeout;
+
   constructor(
     private readonly userService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly mailerService: MailerService,
   ) {}
+
+  onModuleInit() {
+    // 만료된 임시 회원가입 데이터 주기적 정리 (1분마다)
+    this.gcInterval = setInterval(() => {
+      const now = new Date();
+      for (const [key, value] of this.pendingSignUpStore.entries()) {
+        if (now > value.expiresAt) {
+          this.pendingSignUpStore.delete(key);
+        }
+      }
+    }, 60_000);
+  }
 
   private async hashFn(data: string): Promise<string> {
     return argon2.hash(data);
@@ -88,21 +115,98 @@ export class AuthService {
     return tokens;
   }
 
-  async requestSignUp(data: SignUpUserDto): Promise<{ nonce: string }> {
-    const existUser = await this.userService.getUserByWallet(
+  /**
+   * 회원가입 1단계: 이메일로 인증 코드 발송 후 임시 저장소에 보관
+   * DB에는 아직 유저를 생성하지 않음
+   */
+  async requestSignUp(data: SignUpUserDto): Promise<{ message: string }> {
+    const normalizedEmail = data.email.trim().toLowerCase();
+
+    if (!normalizedEmail.endsWith('hansung.ac.kr')) {
+      throw new BadRequestException(
+        '한성대학교 이메일 형식(hansung.ac.kr)만 지원합니다.',
+      );
+    }
+
+    // 지갑 주소 중복 검사
+    const existByWallet = await this.userService.getUserByWallet(
       data.walletAddress,
     );
-    if (existUser) {
+    if (existByWallet) {
       throw new BadRequestException('이미 가입된 지갑 주소입니다.');
     }
 
-    const nonce = Math.floor(Math.random() * 1000000).toString();
+    // 이메일 중복 검사
+    const existByEmail =
+      await this.userService.getUserByEmailOrNull(normalizedEmail);
+    if (existByEmail) {
+      throw new BadRequestException('이미 가입된 이메일입니다.');
+    }
 
-    const newUser = await this.userService.createUser({
-      ...data,
-      email: data.email.trim().toLowerCase(),
-      nonce,
+    // 6자리 인증 코드 생성
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // 만료 시간 설정 (+5분)
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 5);
+
+    // 임시 저장소에 보관 (같은 이메일로 재요청 시 덮어씀)
+    this.pendingSignUpStore.set(normalizedEmail, {
+      data: { ...data, email: normalizedEmail },
+      code,
+      expiresAt,
     });
+
+    // 이메일 발송
+    await this.mailerService.sendMail({
+      to: normalizedEmail,
+      subject: '[ModuBot] 회원가입 이메일 인증 코드 안내',
+      template: './verification',
+      context: {
+        code,
+      },
+    });
+
+    return { message: '인증 코드가 이메일로 발송되었습니다. 5분 내로 인증을 완료해주세요.' };
+  }
+
+  /**
+   * 회원가입 2단계: 인증 코드 검증 + DB 유저 생성 + nonce 반환
+   */
+  async verifySignUpAndCreate(
+    email: string,
+    inputCode: string,
+  ): Promise<{ nonce: string }> {
+    const normalizedEmail = email.trim().toLowerCase();
+    const entry = this.pendingSignUpStore.get(normalizedEmail);
+
+    if (!entry) {
+      throw new BadRequestException(
+        '회원가입 요청 내역이 없습니다. 먼저 회원가입을 요청해주세요.',
+      );
+    }
+
+    if (new Date() > entry.expiresAt) {
+      this.pendingSignUpStore.delete(normalizedEmail);
+      throw new BadRequestException(
+        '인증 코드의 유효 시간이 만료되었습니다. 회원가입을 다시 요청해주세요.',
+      );
+    }
+
+    if (entry.code !== inputCode) {
+      throw new BadRequestException('인증 코드가 일치하지 않습니다.');
+    }
+
+    // 인증 완료 -> DB에 유저 생성
+    const nonce = Math.floor(Math.random() * 1000000).toString();
+    const newUser = await this.userService.createUser({
+      ...entry.data,
+      nonce,
+      isVerified: true,
+    });
+
+    // 사용된 임시 데이터 삭제
+    this.pendingSignUpStore.delete(normalizedEmail);
 
     return { nonce: newUser.nonce };
   }
