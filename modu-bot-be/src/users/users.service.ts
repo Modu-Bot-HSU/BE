@@ -48,6 +48,12 @@ export class UsersService {
     return user;
   }
 
+  async getUserByEmailOrNull(email: string): Promise<Users | null> {
+    return this.userRepository.findOne({
+      where: { email },
+    });
+  }
+
   async getUserById(id: string): Promise<Users> {
     const user = await this.userRepository.findOne({
       where: { id },
