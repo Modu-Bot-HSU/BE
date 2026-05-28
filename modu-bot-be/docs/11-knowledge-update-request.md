@@ -22,17 +22,17 @@
 
 ### Request Body
 
-| 필드             | 타입   | 필수 | 설명                                    |
-| ---------------- | ------ | ---- | --------------------------------------- |
-| category         | String | O    | 카테고리 키                             |
-| content          | String | O    | 수정된 내용 (원본 텍스트)               |
-| originalQuestion | String | X    | 관련 질문. 제공 시 AI 정제 품질 향상    |
+| 필드       | 타입   | 필수 | 설명                                               |
+| ---------- | ------ | ---- | -------------------------------------------------- |
+| category   | String | O    | 카테고리 키                                        |
+| content    | String | O    | 수정된 내용 (원본 텍스트)                          |
+| questionId | String | O    | 연결할 질문의 UUID (`/questions/next`에서 획득)    |
 
 ```json
 {
   "category": "academic",
   "content": "수강신청 기간이 7월 15일로 하루 연기되었습니다.",
-  "originalQuestion": "수강신청 날짜가 변경되었나요?"
+  "questionId": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
@@ -73,5 +73,6 @@
 
 1. 제출 즉시 DB에 `type: UPDATE`, `status: PENDING`, `knowledgeId: <대상 ID>`로 저장
 2. 원본 지식은 승인 전까지 변경되지 않음
-3. 승인 시 AI 서버 `PUT /api/v1/update_knowledge/:knowledgeId` 호출
-4. 수정 요청은 보상(토큰 지급) 대상이 아님
+3. `questionId`로 질문 텍스트를 조회하여 `originalQuestion` 필드에 자동 저장 (클라이언트가 직접 전달하지 않음)
+4. 승인 시 AI 서버 `PUT /api/v1/update_knowledge/:knowledgeId` 호출
+5. 수정 요청은 보상(토큰 지급) 대상이 아님
