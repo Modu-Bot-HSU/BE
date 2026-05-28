@@ -14,10 +14,10 @@
 
 ### Query Parameters
 
-| 파라미터 | 타입    | 필수 | 설명                                           |
-| -------- | ------- | ---- | ---------------------------------------------- |
-| category | String  | O    | 조회할 카테고리 키                             |
-| limit    | Integer | X    | 한 번에 조회할 최대 개수 (기본값: 50)          |
+| 파라미터 | 타입    | 필수 | 설명                                                |
+| -------- | ------- | ---- | --------------------------------------------------- |
+| category | String  | X    | 조회할 카테고리 키. 생략 시 전체 카테고리 조회      |
+| limit    | Integer | X    | 한 번에 조회할 최대 개수 (기본값: 50)               |
 | offset   | String  | X    | 마지막으로 읽은 데이터의 ID (커서). 첫 요청 시 생략 |
 
 ### 카테고리 목록
@@ -36,6 +36,7 @@
 ### Request 예시
 
 ```
+GET /knowledge
 GET /knowledge?category=scholarship&limit=10
 GET /knowledge?category=scholarship&limit=10&offset=550e8400-e29b-41d4-a716-446655440000
 ```
