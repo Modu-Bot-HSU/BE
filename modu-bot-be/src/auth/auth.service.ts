@@ -12,20 +12,22 @@ import { MailerService } from '@nestjs-modules/mailer';
 import { UsersService } from 'src/users/users.service';
 import * as argon2 from 'argon2';
 import { Users } from 'src/users/entities/users.entity';
-import { SignUpUserDto } from './dto/sign-up.dto';
+import { SignUpRequestDto } from './dto/sign-up-request.dto';
 import { SignInUserDto } from './dto/sign-in.dto';
+import { LinkWalletDto } from './dto/link-wallet.dto';
 import { ethers } from 'ethers';
 
 /** 회원가입 임시 저장소 항목 */
 interface PendingSignUpEntry {
-  data: SignUpUserDto;
+  data: SignUpRequestDto;
   code: string;
   expiresAt: Date;
+  isEmailVerified: boolean; // 이메일 인증 완료 여부
 }
 
 @Injectable()
 export class AuthService implements OnModuleInit {
-  /** 이메일 인증 전 임시 회원가입 데이터 저장소 (추후 Redis로 교체 예정) */
+  /** 이메일 인증 전/후 임시 회원가입 데이터 저장소 (추후 Redis로 교체 예정) */
   private pendingSignUpStore = new Map<string, PendingSignUpEntry>();
 
   private gcInterval: NodeJS.Timeout;
@@ -116,24 +118,17 @@ export class AuthService implements OnModuleInit {
   }
 
   /**
-   * 회원가입 1단계: 이메일로 인증 코드 발송 후 임시 저장소에 보관
+   * 회원가입 1단계: 이메일 + 이름 입력 후 인증 코드 발송
+   * walletAddress는 이 단계에서 받지 않음
    * DB에는 아직 유저를 생성하지 않음
    */
-  async requestSignUp(data: SignUpUserDto): Promise<{ message: string }> {
+  async requestSignUp(data: SignUpRequestDto): Promise<{ message: string }> {
     const normalizedEmail = data.email.trim().toLowerCase();
 
     if (!normalizedEmail.endsWith('hansung.ac.kr')) {
       throw new BadRequestException(
         '한성대학교 이메일 형식(hansung.ac.kr)만 지원합니다.',
       );
-    }
-
-    // 지갑 주소 중복 검사
-    const existByWallet = await this.userService.getUserByWallet(
-      data.walletAddress,
-    );
-    if (existByWallet) {
-      throw new BadRequestException('이미 가입된 지갑 주소입니다.');
     }
 
     // 이메일 중복 검사
@@ -155,6 +150,7 @@ export class AuthService implements OnModuleInit {
       data: { ...data, email: normalizedEmail },
       code,
       expiresAt,
+      isEmailVerified: false,
     });
 
     // 이메일 발송
@@ -171,12 +167,14 @@ export class AuthService implements OnModuleInit {
   }
 
   /**
-   * 회원가입 2단계: 인증 코드 검증 + DB 유저 생성 + nonce 반환
+   * 회원가입 2단계: 인증 코드 검증
+   * 검증 성공 시 isEmailVerified = true로 업데이트하고 만료 시간 연장 (+10분)
+   * DB에는 아직 유저를 생성하지 않음
    */
-  async verifySignUpAndCreate(
+  async verifySignUpEmail(
     email: string,
     inputCode: string,
-  ): Promise<{ nonce: string }> {
+  ): Promise<{ message: string }> {
     const normalizedEmail = email.trim().toLowerCase();
     const entry = this.pendingSignUpStore.get(normalizedEmail);
 
@@ -197,10 +195,70 @@ export class AuthService implements OnModuleInit {
       throw new BadRequestException('인증 코드가 일치하지 않습니다.');
     }
 
-    // 인증 완료 -> DB에 유저 생성
+    // 인증 완료 -> isEmailVerified = true, 만료 시간 +10분 연장
+    const extendedExpiresAt = new Date();
+    extendedExpiresAt.setMinutes(extendedExpiresAt.getMinutes() + 10);
+
+    this.pendingSignUpStore.set(normalizedEmail, {
+      ...entry,
+      code: '', // 재사용 방지
+      isEmailVerified: true,
+      expiresAt: extendedExpiresAt,
+    });
+
+    return { message: '이메일 인증이 완료되었습니다. 지갑 주소를 연동해주세요.' };
+  }
+
+  /**
+   * 회원가입 3단계: 지갑주소 연동 + DB 유저 생성 + nonce 반환
+   * 이메일 인증이 완료된 상태(isEmailVerified = true)에서만 허용
+   */
+  async linkWalletAndCreate(dto: LinkWalletDto): Promise<{ nonce: string }> {
+    const normalizedEmail = dto.email.trim().toLowerCase();
+    const normalizedWallet = dto.walletAddress.toLowerCase();
+    const entry = this.pendingSignUpStore.get(normalizedEmail);
+
+    if (!entry) {
+      throw new BadRequestException(
+        '회원가입 요청 내역이 없습니다. 먼저 회원가입을 요청해주세요.',
+      );
+    }
+
+    if (!entry.isEmailVerified) {
+      throw new BadRequestException(
+        '이메일 인증을 먼저 완료해주세요.',
+      );
+    }
+
+    if (new Date() > entry.expiresAt) {
+      this.pendingSignUpStore.delete(normalizedEmail);
+      throw new BadRequestException(
+        '회원가입 세션이 만료되었습니다. 이메일 인증을 다시 완료해주세요.',
+      );
+    }
+
+    // 지갑 주소 중복 검사
+    const existByWallet = await this.userService.getUserByWallet(
+      normalizedWallet,
+    );
+    if (existByWallet) {
+      throw new BadRequestException('이미 가입된 지갑 주소입니다.');
+    }
+
+    // 이메일 중복 재검사 (verifiedToken 발급 후 다른 경로로 가입됐을 수 있음)
+    const existByEmail =
+      await this.userService.getUserByEmailOrNull(normalizedEmail);
+    if (existByEmail) {
+      this.pendingSignUpStore.delete(normalizedEmail);
+      throw new BadRequestException('이미 가입된 이메일입니다.');
+    }
+
+    // nonce 생성 및 유저 DB 저장
     const nonce = Math.floor(Math.random() * 1000000).toString();
     const newUser = await this.userService.createUser({
-      ...entry.data,
+      name: entry.data.name,
+      email: normalizedEmail,
+      walletAddress: normalizedWallet, // 소문자 정규화 후 저장
       nonce,
       isVerified: true,
     });
@@ -212,7 +270,8 @@ export class AuthService implements OnModuleInit {
   }
 
   async requestSignIn(data: SignInUserDto): Promise<{ nonce: string }> {
-    const user = await this.userService.getUserByWallet(data.walletAddress);
+    const normalizedWallet = data.walletAddress.toLowerCase();
+    const user = await this.userService.getUserByWallet(normalizedWallet);
     if (!user) {
       throw new NotFoundException('가입되지 않은 지갑 주소입니다.');
     }
@@ -227,7 +286,8 @@ export class AuthService implements OnModuleInit {
 
   // 서명 검증 및 토큰 발급
   async verifySignatureAndLogin(walletAddress: string, signature: string) {
-    const user = await this.userService.getUserByWallet(walletAddress);
+    const normalizedWallet = walletAddress.toLowerCase();
+    const user = await this.userService.getUserByWallet(normalizedWallet);
     if (!user) {
       throw new NotFoundException('유저를 찾을 수 없습니다.');
     }
@@ -240,7 +300,7 @@ export class AuthService implements OnModuleInit {
       // ethers.js를 사용하여 서명 데이터 복구
       const recoveredAddress = ethers.verifyMessage(user.nonce, signature);
 
-      if (recoveredAddress.toLowerCase() !== walletAddress.toLowerCase()) {
+      if (recoveredAddress.toLowerCase() !== normalizedWallet) {
         throw new UnauthorizedException('서명이 올바르지 않습니다.');
       }
     } catch (e) {
