@@ -215,6 +215,7 @@ export class AuthService implements OnModuleInit {
    */
   async linkWalletAndCreate(dto: LinkWalletDto): Promise<{ nonce: string }> {
     const normalizedEmail = dto.email.trim().toLowerCase();
+    const normalizedWallet = dto.walletAddress.toLowerCase();
     const entry = this.pendingSignUpStore.get(normalizedEmail);
 
     if (!entry) {
@@ -238,7 +239,7 @@ export class AuthService implements OnModuleInit {
 
     // 지갑 주소 중복 검사
     const existByWallet = await this.userService.getUserByWallet(
-      dto.walletAddress,
+      normalizedWallet,
     );
     if (existByWallet) {
       throw new BadRequestException('이미 가입된 지갑 주소입니다.');
@@ -257,7 +258,7 @@ export class AuthService implements OnModuleInit {
     const newUser = await this.userService.createUser({
       name: entry.data.name,
       email: normalizedEmail,
-      walletAddress: dto.walletAddress,
+      walletAddress: normalizedWallet, // 소문자 정규화 후 저장
       nonce,
       isVerified: true,
     });
@@ -269,7 +270,8 @@ export class AuthService implements OnModuleInit {
   }
 
   async requestSignIn(data: SignInUserDto): Promise<{ nonce: string }> {
-    const user = await this.userService.getUserByWallet(data.walletAddress);
+    const normalizedWallet = data.walletAddress.toLowerCase();
+    const user = await this.userService.getUserByWallet(normalizedWallet);
     if (!user) {
       throw new NotFoundException('가입되지 않은 지갑 주소입니다.');
     }
@@ -284,7 +286,8 @@ export class AuthService implements OnModuleInit {
 
   // 서명 검증 및 토큰 발급
   async verifySignatureAndLogin(walletAddress: string, signature: string) {
-    const user = await this.userService.getUserByWallet(walletAddress);
+    const normalizedWallet = walletAddress.toLowerCase();
+    const user = await this.userService.getUserByWallet(normalizedWallet);
     if (!user) {
       throw new NotFoundException('유저를 찾을 수 없습니다.');
     }
@@ -297,7 +300,7 @@ export class AuthService implements OnModuleInit {
       // ethers.js를 사용하여 서명 데이터 복구
       const recoveredAddress = ethers.verifyMessage(user.nonce, signature);
 
-      if (recoveredAddress.toLowerCase() !== walletAddress.toLowerCase()) {
+      if (recoveredAddress.toLowerCase() !== normalizedWallet) {
         throw new UnauthorizedException('서명이 올바르지 않습니다.');
       }
     } catch (e) {
