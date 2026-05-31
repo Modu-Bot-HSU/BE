@@ -13,6 +13,7 @@ export class MyPageNftDto {
 
 @Exclude()
 export class MyPageResponseDto {
+  @Expose() name: string;
   @Expose() email: string;
   @Expose() walletAddress: string;
 

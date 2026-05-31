@@ -33,6 +33,7 @@ export class UsersController {
     const result: MyPageResponseDto = plainToInstance(
       MyPageResponseDto,
       {
+        name: user.name,
         email: user.email,
         walletAddress: user.walletAddress,
         hsTokenBalance,
