@@ -1,8 +1,9 @@
 from google import genai
+from google.genai import types
 from google.genai.errors import ClientError
 from fastapi import HTTPException
 from app.constants.config import settings
-from app.constants.prompt import RAG_ANSWER_PROMPT_TEMPLATE
+from app.constants.prompt import RAG_ANSWER_PROMPT_TEMPLATE, WEB_SEARCH_PROMPT_TEMPLATE
 from app.schemas.knowledge_data import RefinedKnowledge
 from app.schemas.vector import VectorPoint
 from datetime import datetime
@@ -30,6 +31,8 @@ class RAGService:
     def generate_answer(self, question: str) -> dict:
         query_vector = self.get_embedding(question)
         search_results = self.vector_db.search_similar(query_vector, limit=3)
+
+        # 1단계: RAG 시도
         context_text = "\n".join(
             [res.payload.get("content", "") for res in search_results]
         )
@@ -39,6 +42,20 @@ class RAGService:
         response = self.client.models.generate_content(
             model=self.answer_model, contents=prompt
         )
+        rag_answer = response.text
+
+        # 2단계: RAG가 답을 못 찾은 경우 → 웹 검색 폴백
+        if "찾을 수 없습니다" in rag_answer:
+            web_prompt = WEB_SEARCH_PROMPT_TEMPLATE.format(question=question)
+            web_response = self.client.models.generate_content(
+                model=self.answer_model,
+                contents=web_prompt,
+                config=types.GenerateContentConfig(
+                    tools=[types.Tool(google_search=types.GoogleSearch())]
+                ),
+            )
+            return {"answer": web_response.text, "sources": []}
+
         sources = [
             {
                 "knowledge_id": str(res.id),
@@ -48,7 +65,7 @@ class RAGService:
             }
             for res in search_results
         ]
-        return {"answer": response.text, "sources": sources}
+        return {"answer": rag_answer, "sources": sources}
 
     async def refine_raw_text(
         self, category: str, content: str, original_question: str = None
@@ -146,7 +163,10 @@ class RAGService:
         return payload
 
     async def get_knowledge_by_category_logic(
-        self, category: str | None = None, limit: int = 50, offset: str | int | None = None
+        self,
+        category: str | None = None,
+        limit: int = 50,
+        offset: str | int | None = None,
     ) -> list:
         result = self.vector_db.get_knowledges_scroll(
             category=category, limit=limit, offset=offset
